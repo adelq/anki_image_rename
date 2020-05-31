@@ -3,6 +3,7 @@ import os
 import shutil
 
 from aqt.utils import tooltip, askUser
+from aqt.qt import QFileDialog
 
 from anki.hooks import addHook
 
@@ -86,10 +87,37 @@ def on_rename_images(browser):
     browser.mw.reset()
     tooltip("Renamed {} images in {} notes".format(affected_images, affected_notes))
 
+def on_save_selected_imgs(browser):
+    mw = browser.mw
+    nids = browser.selectedNotes()
+    imgs = set()
+    if not nids:
+        tooltip("No cards selected.")
+        return
+    mw.progress.start(max=len(nids), min=0, immediate=True)
+    for nid in nids:
+        note = mw.col.getNote(nid)
+        filename = re.findall(IMG_TAG_RE, note["Image"])[0]
+        imgs.add(filename)
+        mw.progress.update()
+    mw.progress.finish()
+    savefilename = QFileDialog.getSaveFileName(
+        caption="Save image filenames",
+        directory="image_filenames.txt"
+    )
+    with open(savefilename[0], "w") as f:
+        for imgname in imgs:
+            f.write("%s\n" % imgname)
+    tooltip("Saved {} images from {} notes".format(len(imgs), len(nids)))
+
 def setup_menu(browser):
     menu = browser.form.menuEdit
-    action = menu.addAction("Rename images")
-    action.triggered.connect(lambda _, b = browser: on_rename_images(b))
+    # Renaming
+    raction = menu.addAction("Rename images")
+    raction.triggered.connect(lambda _, b = browser: on_rename_images(b))
+    # Save image filenames to a file
+    saction = menu.addAction("Save image filenames")
+    saction.triggered.connect(lambda _, b = browser: on_save_selected_imgs(b))
 
 if __name__ != "__main__":
     addHook("browser.setupMenus", setup_menu)
