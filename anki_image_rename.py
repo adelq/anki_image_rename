@@ -97,8 +97,9 @@ def on_save_selected_imgs(browser):
     mw.progress.start(max=len(nids), min=0, immediate=True)
     for nid in nids:
         note = mw.col.getNote(nid)
-        filename = re.findall(IMG_TAG_RE, note["Image"])[0]
-        imgs.add(filename)
+        for field in note.values():
+            image_filenames = re.findall(IMG_TAG_RE, field)
+            imgs.update(image_filenames)
         mw.progress.update()
     mw.progress.finish()
     savefilename = QFileDialog.getSaveFileName(
