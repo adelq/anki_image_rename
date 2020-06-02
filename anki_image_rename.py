@@ -1,6 +1,7 @@
 import re
 import os
 import shutil
+import json
 
 from aqt.utils import tooltip, askUser
 from aqt.qt import QFileDialog
@@ -87,6 +88,28 @@ def on_rename_images(browser):
     browser.mw.reset()
     tooltip("Renamed {} images in {} notes".format(affected_images, affected_notes))
 
+def on_caption_images(browser):
+    mw = browser.mw
+    nids = browser.selectedNotes()
+    affected_count = 0
+    if not nids:
+        tooltip("No cards selected.")
+        return
+    with open("captions.json") as f:
+        img_captions = json.load(f)
+    mw.progress.start(max=len(nids), min=0, immediate=True)
+    for nid in nids:
+        note = mw.col.getNote(nid)
+        filename = re.findall(IMG_TAG_RE, note["Image"])[0]
+        title = img_captions[filename]
+        note["Header"] = title
+        note.flush()
+        affected_count += 1
+        mw.progress.update()
+    mw.progress.finish()
+    browser.mw.reset()
+    tooltip("Added captions to {} notes".format(affected_count))
+
 def on_save_selected_imgs(browser):
     mw = browser.mw
     nids = browser.selectedNotes()
@@ -116,6 +139,9 @@ def setup_menu(browser):
     # Renaming
     raction = menu.addAction("Rename images")
     raction.triggered.connect(lambda _, b = browser: on_rename_images(b))
+    # Captioning
+    caction = menu.addAction("Caption images")
+    caction.triggered.connect(lambda _, b = browser: on_caption_images(b))
     # Save image filenames to a file
     saction = menu.addAction("Save image filenames")
     saction.triggered.connect(lambda _, b = browser: on_save_selected_imgs(b))
